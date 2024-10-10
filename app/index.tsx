@@ -14,7 +14,7 @@ const SplashScreen = () => {
   return (
     <View style={styles.container}>
       <Image
-        // source={require('../assets/images/intro.png')}
+        source={require('../assets copy/images/intro.png')} // Updated path
         style={styles.image}
       />
       <Text style={styles.title}>Task Management & To-Do List</Text>
