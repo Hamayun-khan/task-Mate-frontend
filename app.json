@@ -13,14 +13,15 @@
       "backgroundColor": "#ffffff"
     },
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.hamayunkhan.testingpurpose"
     },
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#ffffff"
       },
-      "package": "com.hamayun_khan.testingpurpose"
+      "package": "com.hamayunkhan.testingpurpose"
     },
     "web": {
       "favicon": "./assets/favicon.png"

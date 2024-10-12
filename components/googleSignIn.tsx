@@ -3,6 +3,7 @@ import { Button, Alert, Platform } from 'react-native';
 import * as AuthSession from 'expo-auth-session';
 import * as Linking from 'expo-linking';
 import axios from 'axios';
+import * as webBrwser from 'expo-web-browser';
 
 // Define the type for the event
 type LinkingEvent = {
@@ -10,11 +11,14 @@ type LinkingEvent = {
 };
 
 // Google OAuth Client IDs (replace with your actual IDs)
+const webClientId =
+  '454942061374-uitkf4ide02k22c1ovjlkemtu4lipaqa.apps.googleusercontent.com';
 const androidClientId =
   '454942061374-23tp5hkdvkvorecar0dopv7sb31rlf4p.apps.googleusercontent.com';
 const iosClientId =
   '454942061374-2ft32njacclm512a0cp549f5tprjlm60.apps.googleusercontent.com';
 
+webBrwser.maybeCompleteAuthSession();
 // Your backend's base URL
 const backendBaseUrl = 'https://commonly-beloved-calf.ngrok-free.app/api/v1';
 
