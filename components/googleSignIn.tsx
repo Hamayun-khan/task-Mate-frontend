@@ -1,14 +1,14 @@
-import React, { useEffect, useState } from 'react';
-import { Button, Alert, Platform } from 'react-native';
-import * as AuthSession from 'expo-auth-session';
-import * as Linking from 'expo-linking';
+import React, { useEffect } from 'react';
+import * as Google from 'expo-auth-session/providers/google';
+import * as webBrowser from 'expo-web-browser';
 import axios from 'axios';
-import * as webBrwser from 'expo-web-browser';
-
-// Define the type for the event
-type LinkingEvent = {
-  url: string;
-};
+import {
+  View,
+  TouchableOpacity,
+  Text,
+  StyleSheet,
+  Pressable,
+} from 'react-native';
 
 // Google OAuth Client IDs (replace with your actual IDs)
 const webClientId =
@@ -18,96 +18,74 @@ const androidClientId =
 const iosClientId =
   '454942061374-2ft32njacclm512a0cp549f5tprjlm60.apps.googleusercontent.com';
 
-webBrwser.maybeCompleteAuthSession();
-// Your backend's base URL
-const backendBaseUrl = 'https://commonly-beloved-calf.ngrok-free.app/api/v1';
+// Complete the authentication session
+webBrowser.maybeCompleteAuthSession();
 
-const redirectUri = AuthSession.makeRedirectUri({
-  native: 'taskmate://auth',
-});
+const GoogleSignIn = () => {
+  // Set up the Google authentication request
+  const [request, response, promptAsync] = Google.useAuthRequest({
+    webClientId,
+    iosClientId,
+    androidClientId,
+    scopes: ['openid', 'profile', 'email'],
+  });
 
-interface User {
-  id: string;
-  name: string;
-  email: string;
-}
-
-interface TokenResponse {
-  accessToken: string;
-  user: User;
-}
-
-export default function GoogleSignIn() {
-  const [accessToken, setAccessToken] = useState<string | null>(null);
-  const [user, setUser] = useState<User | null>(null);
-
-  const clientId = Platform.OS === 'android' ? androidClientId : iosClientId;
-
-  const [request, response, promptAsync] = AuthSession.useAuthRequest(
-    {
-      clientId,
-      redirectUri,
-      scopes: ['openid', 'email', 'profile'],
-      responseType: 'code',
-    },
-    { authorizationEndpoint: 'https://accounts.google.com/o/oauth2/v2/auth' }
-  );
-
+  // Function to handle response from Google OAuth and send the token to the backend
   useEffect(() => {
-    if (response?.type === 'success' && !response.params?.error) {
-      const { code } = response.params;
-      axios
-        .post<TokenResponse>(`${backendBaseUrl}/auth/google/callback`, { code })
-        .then((response) => {
-          const { accessToken, user } = response.data;
-          setAccessToken(accessToken);
-          setUser(user);
-          console.log(response.data);
-        })
-        .catch((error) => {
-          console.error('Error during Google callback:', error);
-          Alert.alert(
-            'Authentication Error',
-            'An error occurred during authentication.'
-          );
-        });
-    } else if (response?.type === 'error') {
-      Alert.alert(
-        'Authentication Error',
-        'An error occurred during authentication.'
-      );
+    if (response?.type === 'success') {
+      const { authentication } = response;
+      const token = authentication?.accessToken;
+      console.log('Google OAuth Access Token:', token);
+      sendTokenToBackend(token);
     }
   }, [response]);
 
-  useEffect(() => {
-    const handleDeepLink = (event: LinkingEvent) => {
-      if (event.url && event.url.startsWith('taskmate://auth')) {
-        const urlParams = new URLSearchParams(new URL(event.url).search);
-        const tokenFromDeepLink = urlParams.get('accessToken');
-        if (tokenFromDeepLink) {
-          setAccessToken(tokenFromDeepLink);
-        }
-      }
-    };
+  const sendTokenToBackend = async (token: string | undefined) => {
+    try {
+      const backendUrl =
+        'https://commonly-beloved-calf.ngrok-free.app/api/v1/auth/google/callback'; // Replace with your backend URL
+      const res = await axios.post(backendUrl, { token });
+      console.log('Backend response:', res.data);
+    } catch (error) {
+      console.error('Error sending token to backend:', error);
+    }
+  };
 
-    const subscription = Linking.addEventListener('url', handleDeepLink);
-    Linking.getInitialURL().then((url) => {
-      if (url) {
-        handleDeepLink({ url });
-      }
-    });
-
-    return () => {
-      subscription.remove();
-    };
-  }, []);
-
+  // Render Google sign-in button
   return (
-    <Button
-      title="Sign in with Google"
-      onPress={() => {
-        promptAsync();
-      }}
-    />
+    <View style={styles.container}>
+      <Pressable
+        style={({ pressed }) => [
+          styles.button,
+          pressed ? styles.buttonPressed : null, // Change style when pressed
+        ]}
+        onPress={() => {
+          promptAsync();
+        }}
+      >
+        <Text style={styles.buttonText}>Sign in with Google</Text>
+      </Pressable>
+    </View>
   );
-}
+};
+
+const styles = StyleSheet.create({
+  container: {
+    marginTop: 20,
+  },
+  button: {
+    backgroundColor: '#4285F4',
+    padding: 12,
+    borderRadius: 5,
+    alignItems: 'center',
+  },
+  buttonText: {
+    color: '#FFF',
+    fontSize: 16,
+  },
+  buttonPressed: {
+    opacity: 0.7, // Slightly change opacity when pressed
+  },
+});
+
+export default GoogleSignIn;

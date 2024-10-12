@@ -17,8 +17,9 @@ import { yupResolver } from '@hookform/resolvers/yup';
 import { useDispatch } from 'react-redux';
 import { loginUser } from '../../store/slices/authSlice'; // Redux action
 import { AppDispatch } from '../../store/index'; // Import AppDispatch type
-import GoogleSignIn from '../../components/googleSignIn';
+
 import FacebookSignIn from '../../components/facebookSignIn';
+import GoogleSignIn from '../../components/googleSignIn';
 
 // Form validation schema
 const loginSchema = yup.object().shape({
@@ -147,8 +148,8 @@ const Login = () => {
         </TouchableOpacity>
 
         <View style={styles.oauthContainer}>
-          <GoogleSignIn />
           <FacebookSignIn />
+          <GoogleSignIn />
         </View>
 
         <View style={styles.signupContainer}>
