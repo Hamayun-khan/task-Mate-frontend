@@ -1,43 +1,70 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import axios from 'axios';
 
+// Define User interface
+
+interface AuthResponse {
+  data: {
+    accessToken: string;
+    refreshToken: string;
+    user: User;
+  };
+}
+interface User {
+  id: string;
+  name: string;
+  email: string;
+  // Add other properties as needed
+}
+
+// API base URL
 const API_URL =
-  process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3000/api/v1';
+  process.env.EXPO_PUBLIC_API_URL ||
+  'http://localhost:3000/api/v1' ||
+  'https://commonly-beloved-calf.ngrok-free.app/api/v1';
 
 // Storage keys
 const TOKEN_KEY = 'accessToken';
 const REFRESH_TOKEN_KEY = 'refreshToken';
 const USER_KEY = 'userData';
 
-// Axios instance
+// Create an Axios instance
 const api = axios.create({
   baseURL: API_URL,
   withCredentials: true,
 });
 
-// Interceptor to add token to requests
-api.interceptors.request.use(
-  async (config) => {
-    const token = await AsyncStorage.getItem(TOKEN_KEY);
-    if (token) {
-      config.headers.Authorization = `Bearer ${token}`;
-    }
-    return config;
-  },
-  (error) => {
-    return Promise.reject(error);
-  }
-);
+// Function to set up the interceptor
+const setupInterceptors = async () => {
+  const token = await AsyncStorage.getItem(TOKEN_KEY);
+
+  api.interceptors.request.use(
+    (config) => {
+      if (token && config.headers) {
+        config.headers.Authorization = `Bearer ${token}`;
+      }
+      return config;
+    },
+    (error) => Promise.reject(error)
+  );
+};
+
+// Call the setup function to initialize interceptors
+setupInterceptors();
 
 export const authService = {
   // Register user
-  register: async (formData: FormData) => {
+  register: async (formData: FormData): Promise<AuthResponse> => {
     try {
-      const response = await api.post('/user/register', formData, {
-        headers: {
-          'Content-Type': 'multipart/form-data',
-        },
-      });
+      const response = await api.post<AuthResponse>(
+        '/user/register',
+        formData,
+        {
+          headers: {
+            'Content-Type': 'multipart/form-data',
+          },
+        }
+      );
       const { accessToken, refreshToken, user } = response.data.data;
 
       await AsyncStorage.setItem(TOKEN_KEY, accessToken);
@@ -54,9 +81,12 @@ export const authService = {
   },
 
   // Login user
-  login: async (email: string, password: string) => {
+  login: async (email: string, password: string): Promise<AuthResponse> => {
     try {
-      const response = await api.post('/user/login', { email, password });
+      const response = await api.post<AuthResponse>('/user/login', {
+        email,
+        password,
+      });
       const { accessToken, refreshToken, user } = response.data.data;
 
       await AsyncStorage.setItem(TOKEN_KEY, accessToken);
@@ -86,12 +116,14 @@ export const authService = {
   },
 
   // Refresh token
-  refreshToken: async () => {
+  refreshToken: async (): Promise<string> => {
     try {
       const refreshToken = await AsyncStorage.getItem(REFRESH_TOKEN_KEY);
       if (!refreshToken) throw new Error('No refresh token found');
 
-      const response = await api.post('/user/refresh-token', { refreshToken });
+      const response = await api.post<AuthResponse>('/user/refresh-token', {
+        refreshToken,
+      });
       const { accessToken } = response.data.data;
 
       await AsyncStorage.setItem(TOKEN_KEY, accessToken);
@@ -105,7 +137,7 @@ export const authService = {
   },
 
   // Get current user
-  getCurrentUser: async () => {
+  getCurrent: async (): Promise<User | null> => {
     try {
       const userData = await AsyncStorage.getItem(USER_KEY);
       return userData ? JSON.parse(userData) : null;
@@ -116,7 +148,7 @@ export const authService = {
   },
 
   // Check if user is authenticated
-  isAuthenticated: async () => {
+  isAuthenticated: async (): Promise<boolean> => {
     try {
       const token = await AsyncStorage.getItem(TOKEN_KEY);
       return !!token;

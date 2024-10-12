@@ -1,77 +1,109 @@
-import React, { useEffect } from 'react';
-import { Button, Alert } from 'react-native';
+import React, { useEffect, useState } from 'react';
+import { Button, Alert, Platform } from 'react-native';
 import * as AuthSession from 'expo-auth-session';
+import * as Linking from 'expo-linking';
 import axios from 'axios';
 
-const googleClientId = 'YOUR_GOOGLE_CLIENT_ID';
-const authorizationEndpoint = 'https://accounts.google.com/o/oauth2/v2/auth';
-const tokenEndpoint = 'https://oauth2.googleapis.com/token';
-const redirectUri =
-  'https://commonly-beloved-calf.ngrok-free.app/auth/google/callback';
+// Define the type for the event
+type LinkingEvent = {
+  url: string;
+};
 
-// Define the expected structure of the token response
-interface GoogleTokenResponse {
-  access_token: string;
-  id_token: string;
-  expires_in: number;
-  token_type: string;
-  scope: string;
+// Google OAuth Client IDs (replace with your actual IDs)
+const androidClientId =
+  '454942061374-23tp5hkdvkvorecar0dopv7sb31rlf4p.apps.googleusercontent.com';
+const iosClientId =
+  '454942061374-2ft32njacclm512a0cp549f5tprjlm60.apps.googleusercontent.com';
+
+// Your backend's base URL
+const backendBaseUrl = 'https://commonly-beloved-calf.ngrok-free.app/api/v1';
+
+const redirectUri = AuthSession.makeRedirectUri({
+  native: 'taskmate://auth',
+});
+
+interface User {
+  id: string;
+  name: string;
+  email: string;
+}
+
+interface TokenResponse {
+  accessToken: string;
+  user: User;
 }
 
 export default function GoogleSignIn() {
-  const discovery = {
-    authorizationEndpoint,
-    tokenEndpoint,
-  };
+  const [accessToken, setAccessToken] = useState<string | null>(null);
+  const [user, setUser] = useState<User | null>(null);
+
+  const clientId = Platform.OS === 'android' ? androidClientId : iosClientId;
 
   const [request, response, promptAsync] = AuthSession.useAuthRequest(
     {
-      clientId: googleClientId,
+      clientId,
       redirectUri,
       scopes: ['openid', 'email', 'profile'],
-      responseType: AuthSession.ResponseType.Code,
+      responseType: 'code',
     },
-    discovery
+    { authorizationEndpoint: 'https://accounts.google.com/o/oauth2/v2/auth' }
   );
 
   useEffect(() => {
-    if (response?.type === 'success') {
+    if (response?.type === 'success' && !response.params?.error) {
       const { code } = response.params;
       axios
-        .post<GoogleTokenResponse>(tokenEndpoint, {
-          grant_type: 'authorization_code',
-          code,
-          redirect_uri: redirectUri,
-          client_id: googleClientId,
-          client_secret: 'YOUR_GOOGLE_CLIENT_SECRET',
-        })
+        .post<TokenResponse>(`${backendBaseUrl}/auth/google/callback`, { code })
         .then((response) => {
-          const { access_token, id_token } = response.data;
-          axios
-            .post('https://your-backend-url.com/auth/google', {
-              access_token,
-              id_token,
-            })
-            .then((response) => {
-              console.log(response.data);
-            })
-            .catch((error) => {
-              console.error('Backend error:', error);
-              Alert.alert(
-                'Error',
-                'An error occurred while communicating with the backend.'
-              );
-            });
+          const { accessToken, user } = response.data;
+          setAccessToken(accessToken);
+          setUser(user);
+          console.log(response.data);
         })
         .catch((error) => {
-          console.error('Token exchange error:', error);
+          console.error('Error during Google callback:', error);
           Alert.alert(
-            'Error',
-            'An error occurred while exchanging the authorization code.'
+            'Authentication Error',
+            'An error occurred during authentication.'
           );
         });
+    } else if (response?.type === 'error') {
+      Alert.alert(
+        'Authentication Error',
+        'An error occurred during authentication.'
+      );
     }
   }, [response]);
 
-  return <Button title="Sign in with Google" onPress={() => promptAsync()} />;
+  useEffect(() => {
+    const handleDeepLink = (event: LinkingEvent) => {
+      if (event.url && event.url.startsWith('taskmate://auth')) {
+        const urlParams = new URLSearchParams(new URL(event.url).search);
+        const tokenFromDeepLink = urlParams.get('accessToken');
+        if (tokenFromDeepLink) {
+          setAccessToken(tokenFromDeepLink);
+        }
+      }
+    };
+
+    const subscription = Linking.addEventListener('url', handleDeepLink);
+    Linking.getInitialURL().then((url) => {
+      if (url) {
+        handleDeepLink({ url });
+      }
+    });
+
+    return () => {
+      subscription.remove();
+    };
+  }, []);
+
+  return (
+    <Button
+      title="Sign in with Google"
+      onPress={() => {
+        promptAsync();
+      }}
+    />
+  );
 }
