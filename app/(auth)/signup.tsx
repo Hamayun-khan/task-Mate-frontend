@@ -15,8 +15,9 @@ import { useForm, Controller } from 'react-hook-form';
 import * as yup from 'yup';
 import { yupResolver } from '@hookform/resolvers/yup';
 import { useDispatch } from 'react-redux';
-import { registerUser } from '../../store/slices/authSlice'; // Redux action
+import { registerUser } from '../../store/slices/authSlice'; // Redux action for backend registration
 import { AppDispatch } from '../../store/index'; // Import AppDispatch type
+import { useUser } from '@clerk/clerk-expo'; // Clerk for OAuth and user management
 
 // Form validation schema
 const signupSchema = yup.object().shape({
@@ -40,6 +41,9 @@ const Signup = () => {
   const dispatch: AppDispatch = useDispatch();
   const [isLoading, setIsLoading] = React.useState(false);
 
+  // Clerk's user hook for handling OAuth or Clerk's user session
+  const { user: clerkUser, isLoaded } = useUser();
+
   const {
     control,
     handleSubmit,
@@ -53,33 +57,42 @@ const Signup = () => {
     },
   });
 
+  // Conditional handling based on Clerk's user session
+  if (!isLoaded) {
+    return (
+      <View style={styles.loadingContainer}>
+        <Text>Loading...</Text>
+      </View>
+    );
+  }
+
   const onSubmit = async (data: SignupFormData) => {
-    console.log('Submitting signup data:', data);
     setIsLoading(true);
     try {
+      // Check if the user is signing in with Clerk (OAuth) vs backend API
+      if (clerkUser) {
+        Alert.alert(
+          'Signup Success',
+          'You have registered successfully with Clerk!'
+        );
+        router.push('/login'); // Redirect to login page
+        return;
+      }
+
+      // Call backend API for registration if it's not a Clerk OAuth user
       const action = await dispatch(registerUser(data));
 
       if (registerUser.fulfilled.match(action)) {
-        console.log('Registration successful:', action.payload);
-        // Signup successful
         Alert.alert('Signup Success', 'You have registered successfully!');
         router.push('/login'); // Redirect to login page
       } else if (registerUser.rejected.match(action)) {
-        console.error('Registration failed:', action.payload);
-        // Signup failed
         Alert.alert(
           'Signup Error',
           action.payload || 'Signup failed. Please try again.'
         );
       }
     } catch (error: any) {
-      console.error('Unexpected error during registration:', error);
-      Alert.alert(
-        'Signup Error',
-        error instanceof Error
-          ? error.message
-          : 'Signup failed. Please try again.'
-      );
+      Alert.alert('Signup Error', 'Signup failed. Please try again.');
     } finally {
       setIsLoading(false);
     }
@@ -230,6 +243,11 @@ const styles = StyleSheet.create({
     color: '#6200EE',
     fontSize: 14,
     fontWeight: 'bold',
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
 });
 

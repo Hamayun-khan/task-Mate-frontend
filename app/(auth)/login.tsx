@@ -17,9 +17,9 @@ import { yupResolver } from '@hookform/resolvers/yup';
 import { useDispatch } from 'react-redux';
 import { loginUser } from '../../store/slices/authSlice'; // Redux action
 import { AppDispatch } from '../../store/index'; // Import AppDispatch type
-
-import FacebookSignIn from '../../components/facebookSignIn';
-import GoogleSignIn from '../../components/googleSignIn';
+import { useOAuth, useAuth } from '@clerk/clerk-expo'; // Clerk OAuth
+import * as Linking from 'expo-linking';
+import * as WebBrowser from 'expo-web-browser';
 
 // Form validation schema
 const loginSchema = yup.object().shape({
@@ -30,15 +30,18 @@ const loginSchema = yup.object().shape({
     .min(6, 'Password must be at least 6 characters'),
 });
 
-// Define the data structure for form submission
 type LoginFormData = {
   email: string;
   password: string;
 };
 
 const Login = () => {
+  useWarmUpBrowser();
+
+  const { startOAuthFlow } = useOAuth({ strategy: 'oauth_google' });
+  const { signOut } = useAuth();
   const router = useRouter();
-  const dispatch: AppDispatch = useDispatch(); // Use AppDispatch type
+  const dispatch: AppDispatch = useDispatch();
   const [isLoading, setIsLoading] = React.useState(false);
 
   const {
@@ -57,16 +60,12 @@ const Login = () => {
     setIsLoading(true);
     try {
       const action = await dispatch(loginUser(data));
-
-      // Check if login was successful
       if (loginUser.fulfilled.match(action)) {
-        // Navigate to home if login was successful
         router.push('/home');
       } else if (loginUser.rejected.match(action)) {
-        // Handle the login error gracefully
         Alert.alert(
           'Login Error',
-          action.payload || 'Invalid email or password. Please try again.'
+          action.payload || 'Invalid email or password.'
         );
       }
     } catch (error) {
@@ -77,6 +76,34 @@ const Login = () => {
       );
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const onPressGoogleSignIn = async () => {
+    try {
+      // Clear any existing session state
+      await signOut();
+
+      const redirectUrl = Linking.createURL('/home');
+
+      const { createdSessionId, setActive } = await startOAuthFlow({
+        redirectUrl,
+      });
+
+      if (createdSessionId && setActive) {
+        await setActive({ session: createdSessionId });
+        router.replace('/home');
+      } else {
+        throw new Error('Failed to create a new session.');
+      }
+    } catch (err) {
+      console.error('OAuth error:', err);
+      Alert.alert(
+        'Google Sign-In Error',
+        err instanceof Error
+          ? err.message
+          : 'Failed to sign in with Google. Please try again.'
+      );
     }
   };
 
@@ -147,10 +174,9 @@ const Login = () => {
           )}
         </TouchableOpacity>
 
-        <View style={styles.oauthContainer}>
-          <FacebookSignIn />
-          <GoogleSignIn />
-        </View>
+        <TouchableOpacity onPress={onPressGoogleSignIn}>
+          <Text>Sign in with Google</Text>
+        </TouchableOpacity>
 
         <View style={styles.signupContainer}>
           <Text style={styles.signupText}>Don't have an account? </Text>
@@ -163,30 +189,14 @@ const Login = () => {
   );
 };
 
+export default Login;
+
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#F5F5F5',
-  },
-  formContainer: {
-    flex: 1,
-    padding: 20,
-    justifyContent: 'center',
-  },
-  title: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    color: '#333',
-    marginBottom: 8,
-  },
-  subtitle: {
-    fontSize: 16,
-    color: '#666',
-    marginBottom: 30,
-  },
-  inputContainer: {
-    marginBottom: 20,
-  },
+  container: { flex: 1, backgroundColor: '#F5F5F5' },
+  formContainer: { flex: 1, padding: 20, justifyContent: 'center' },
+  title: { fontSize: 28, fontWeight: 'bold', color: '#333', marginBottom: 8 },
+  subtitle: { fontSize: 16, color: '#666', marginBottom: 30 },
+  inputContainer: { marginBottom: 20 },
   input: {
     backgroundColor: '#fff',
     padding: 15,
@@ -195,50 +205,33 @@ const styles = StyleSheet.create({
     borderColor: '#ddd',
     fontSize: 16,
   },
-  errorText: {
-    color: '#FF3B30',
-    fontSize: 12,
-    marginTop: 5,
-    marginLeft: 5,
-  },
-  forgotPassword: {
-    alignSelf: 'flex-end',
-    marginBottom: 20,
-  },
-  forgotPasswordText: {
-    color: '#6200EE',
-    fontSize: 14,
-  },
+  errorText: { color: '#FF3B30', fontSize: 12, marginTop: 5, marginLeft: 5 },
+  forgotPassword: { alignSelf: 'flex-end', marginBottom: 20 },
+  forgotPasswordText: { color: '#6200EE', fontSize: 14 },
   loginButton: {
     backgroundColor: '#6200EE',
     padding: 15,
     borderRadius: 10,
     alignItems: 'center',
   },
-  loginButtonText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: 'bold',
-  },
-  oauthContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: 20,
-  },
+  loginButtonText: { color: '#fff', fontSize: 16, fontWeight: 'bold' },
   signupContainer: {
     flexDirection: 'row',
     justifyContent: 'center',
     marginTop: 20,
   },
-  signupText: {
-    color: '#666',
-    fontSize: 14,
-  },
-  signupLink: {
-    color: '#6200EE',
-    fontSize: 14,
-    fontWeight: 'bold',
-  },
+  signupText: { color: '#666', fontSize: 14 },
+  signupLink: { color: '#6200EE', fontSize: 14, fontWeight: 'bold' },
 });
 
-export default Login;
+// Warm-up browser for OAuth
+export const useWarmUpBrowser = () => {
+  React.useEffect(() => {
+    // Warm up the android browser to improve UX
+    // https://docs.expo.dev/guides/authentication/#improving-user-experience
+    void WebBrowser.warmUpAsync();
+    return () => {
+      void WebBrowser.coolDownAsync();
+    };
+  }, []);
+};
