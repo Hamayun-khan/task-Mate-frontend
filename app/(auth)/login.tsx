@@ -38,7 +38,13 @@ type LoginFormData = {
 const Login = () => {
   useWarmUpBrowser();
 
-  const { startOAuthFlow } = useOAuth({ strategy: 'oauth_google' });
+  // Renamed the second startOAuthFlow to startFacebookOAuthFlow
+  const { startOAuthFlow: startGoogleOAuthFlow } = useOAuth({
+    strategy: 'oauth_google',
+  });
+  const { startOAuthFlow: startFacebookOAuthFlow } = useOAuth({
+    strategy: 'oauth_facebook',
+  });
   const { signOut } = useAuth();
   const router = useRouter();
   const dispatch: AppDispatch = useDispatch();
@@ -81,12 +87,11 @@ const Login = () => {
 
   const onPressGoogleSignIn = async () => {
     try {
-      // Clear any existing session state
       await signOut();
 
       const redirectUrl = Linking.createURL('/home');
 
-      const { createdSessionId, setActive } = await startOAuthFlow({
+      const { createdSessionId, setActive } = await startGoogleOAuthFlow({
         redirectUrl,
       });
 
@@ -103,6 +108,37 @@ const Login = () => {
         err instanceof Error
           ? err.message
           : 'Failed to sign in with Google. Please try again.'
+      );
+    }
+  };
+
+  const onPressFacebookSignIn = async () => {
+    try {
+      // Sign out from any existing session
+      await signOut();
+
+      // Define the redirect URL
+      const redirectUrl = Linking.createURL('/home');
+
+      // Start the Facebook OAuth flow with Clerk
+      const { createdSessionId, setActive } = await startFacebookOAuthFlow({
+        redirectUrl,
+      });
+
+      // Check if a session was created
+      if (createdSessionId && setActive) {
+        await setActive({ session: createdSessionId });
+        router.replace('/home'); // Redirect the user to the home screen
+      } else {
+        throw new Error('Failed to create a new session.');
+      }
+    } catch (err) {
+      console.error('Facebook OAuth error:', err);
+      Alert.alert(
+        'Facebook Sign-In Error',
+        err instanceof Error
+          ? err.message
+          : 'Failed to sign in with Facebook. Please try again.'
       );
     }
   };
@@ -178,6 +214,10 @@ const Login = () => {
           <Text>Sign in with Google</Text>
         </TouchableOpacity>
 
+        <TouchableOpacity onPress={onPressFacebookSignIn}>
+          <Text>Sign in with Facebook</Text>
+        </TouchableOpacity>
+
         <View style={styles.signupContainer}>
           <Text style={styles.signupText}>Don't have an account? </Text>
           <TouchableOpacity onPress={() => router.push('/signup')}>
@@ -192,9 +232,19 @@ const Login = () => {
 export default Login;
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#F5F5F5' },
+  container: {
+    flex: 1,
+    backgroundColor: '#F5F5F5',
+  },
+
   formContainer: { flex: 1, padding: 20, justifyContent: 'center' },
-  title: { fontSize: 28, fontWeight: 'bold', color: '#333', marginBottom: 8 },
+
+  title: {
+    fontSize: 28,
+    fontWeight: 'bold',
+    color: '#333',
+    marginBottom: 8,
+  },
   subtitle: { fontSize: 16, color: '#666', marginBottom: 30 },
   inputContainer: { marginBottom: 20 },
   input: {
@@ -227,8 +277,6 @@ const styles = StyleSheet.create({
 // Warm-up browser for OAuth
 export const useWarmUpBrowser = () => {
   React.useEffect(() => {
-    // Warm up the android browser to improve UX
-    // https://docs.expo.dev/guides/authentication/#improving-user-experience
     void WebBrowser.warmUpAsync();
     return () => {
       void WebBrowser.coolDownAsync();
