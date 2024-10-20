@@ -1,4 +1,5 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as SecureStore from 'expo-secure-store';
 import axios from 'axios';
 
 // Define User interface
@@ -36,7 +37,7 @@ const api = axios.create({
 
 // Function to set up the interceptor
 const setupInterceptors = async () => {
-  const token = await AsyncStorage.getItem(TOKEN_KEY);
+  const token = await SecureStore.getItemAsync(TOKEN_KEY); // Get token from SecureStore
 
   api.interceptors.request.use(
     (config) => {
@@ -67,8 +68,11 @@ export const authService = {
       );
       const { accessToken, refreshToken, user } = response.data.data;
 
-      await AsyncStorage.setItem(TOKEN_KEY, accessToken);
-      await AsyncStorage.setItem(REFRESH_TOKEN_KEY, refreshToken);
+      // Store sensitive tokens in SecureStore
+      await SecureStore.setItemAsync(TOKEN_KEY, accessToken);
+      await SecureStore.setItemAsync(REFRESH_TOKEN_KEY, refreshToken);
+
+      // Store less sensitive user data in AsyncStorage
       await AsyncStorage.setItem(USER_KEY, JSON.stringify(user));
 
       return response.data;
@@ -89,8 +93,11 @@ export const authService = {
       });
       const { accessToken, refreshToken, user } = response.data.data;
 
-      await AsyncStorage.setItem(TOKEN_KEY, accessToken);
-      await AsyncStorage.setItem(REFRESH_TOKEN_KEY, refreshToken);
+      // Store sensitive tokens in SecureStore
+      await SecureStore.setItemAsync(TOKEN_KEY, accessToken);
+      await SecureStore.setItemAsync(REFRESH_TOKEN_KEY, refreshToken);
+
+      // Store less sensitive user data in AsyncStorage
       await AsyncStorage.setItem(USER_KEY, JSON.stringify(user));
 
       return response.data;
@@ -105,8 +112,12 @@ export const authService = {
   logout: async () => {
     try {
       await api.post('/user/logout');
-      await AsyncStorage.removeItem(TOKEN_KEY);
-      await AsyncStorage.removeItem(REFRESH_TOKEN_KEY);
+
+      // Remove sensitive data from SecureStore
+      await SecureStore.deleteItemAsync(TOKEN_KEY);
+      await SecureStore.deleteItemAsync(REFRESH_TOKEN_KEY);
+
+      // Remove less sensitive user data from AsyncStorage
       await AsyncStorage.removeItem(USER_KEY);
     } catch (error: any) {
       const errorMessage =
@@ -118,7 +129,7 @@ export const authService = {
   // Refresh token
   refreshToken: async (): Promise<string> => {
     try {
-      const refreshToken = await AsyncStorage.getItem(REFRESH_TOKEN_KEY);
+      const refreshToken = await SecureStore.getItemAsync(REFRESH_TOKEN_KEY); // Get refresh token from SecureStore
       if (!refreshToken) throw new Error('No refresh token found');
 
       const response = await api.post<AuthResponse>('/user/refresh-token', {
@@ -126,7 +137,8 @@ export const authService = {
       });
       const { accessToken } = response.data.data;
 
-      await AsyncStorage.setItem(TOKEN_KEY, accessToken);
+      // Update access token in SecureStore
+      await SecureStore.setItemAsync(TOKEN_KEY, accessToken);
       return accessToken;
     } catch (error: any) {
       const errorMessage =
@@ -135,7 +147,6 @@ export const authService = {
       throw new Error(errorMessage);
     }
   },
-
   // Get current user
   getCurrent: async (): Promise<User | null> => {
     try {
@@ -150,7 +161,7 @@ export const authService = {
   // Check if user is authenticated
   isAuthenticated: async (): Promise<boolean> => {
     try {
-      const token = await AsyncStorage.getItem(TOKEN_KEY);
+      const token = await SecureStore.getItemAsync(TOKEN_KEY); // Check token in SecureStore
       return !!token;
     } catch (error: any) {
       const errorMessage =
@@ -159,5 +170,4 @@ export const authService = {
     }
   },
 };
-
 export default authService;

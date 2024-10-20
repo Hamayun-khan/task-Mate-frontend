@@ -35,6 +35,11 @@ interface RegisterCredentials {
   password: string;
 }
 
+interface ResetPasswordCredentials {
+  email: string; // For sending reset link
+  newPassword: string; // For resetting password
+}
+
 interface AuthState {
   user: User | null;
   isLoading: boolean;
@@ -139,6 +144,53 @@ export const registerUser = createAsyncThunk<
   }
 });
 
+export const sendResetLink = createAsyncThunk<
+  { message: string },
+  string,
+  { rejectValue: string }
+>('auth/sendResetLink', async (email, { rejectWithValue }) => {
+  console.log('Sending reset link for email:', email);
+  try {
+    const response = await axios.post<{ message: string }>(
+      `${BASE_URL}/api/v1/user/forgot-password`,
+      { email }
+    );
+    console.log('Reset link sent successfully:', response.data);
+    return response.data;
+  } catch (error: any) {
+    console.error('Send Reset Link Error:', error);
+    console.error('Error response:', error.response?.data);
+    return rejectWithValue(
+      error.response?.data?.message || 'Failed to send reset link'
+    );
+  }
+});
+
+// Reset password
+export const resetPassword = createAsyncThunk<
+  { message: string },
+  { token: string; newPassword: string; confirmPassword: string },
+  { rejectValue: string }
+>(
+  'auth/resetPassword',
+  async ({ token, newPassword, confirmPassword }, { rejectWithValue }) => {
+    console.log('Resetting password for token:', token);
+    try {
+      const response = await axios.post<{ message: string }>(
+        `${BASE_URL}/api/v1/user/reset-password`,
+        { token, newPassword, confirmPassword }
+      );
+      console.log('Password reset successful:', response.data);
+      return response.data;
+    } catch (error: any) {
+      console.error('Reset Password Error:', error);
+      console.error('Error response:', error.response?.data);
+      return rejectWithValue(
+        error.response?.data?.message || 'Failed to reset password'
+      );
+    }
+  }
+);
 // Redux slice for handling auth state
 const authSlice = createSlice({
   name: 'auth',
@@ -182,6 +234,32 @@ const authSlice = createSlice({
       state.isClerkUser = action.payload.data.user.isClerkUser || false;
     });
     builder.addCase(registerUser.rejected, (state, action) => {
+      state.isLoading = false;
+      state.error = action.payload as string;
+    });
+
+    builder.addCase(sendResetLink.pending, (state) => {
+      state.isLoading = true;
+      state.error = null;
+    });
+    builder.addCase(sendResetLink.fulfilled, (state, action) => {
+      state.isLoading = false;
+      state.error = null; // Clear error on success
+    });
+    builder.addCase(sendResetLink.rejected, (state, action) => {
+      state.isLoading = false;
+      state.error = action.payload as string;
+    });
+
+    builder.addCase(resetPassword.pending, (state) => {
+      state.isLoading = true;
+      state.error = null;
+    });
+    builder.addCase(resetPassword.fulfilled, (state, action) => {
+      state.isLoading = false;
+      state.error = null; // Clear error on success
+    });
+    builder.addCase(resetPassword.rejected, (state, action) => {
       state.isLoading = false;
       state.error = action.payload as string;
     });

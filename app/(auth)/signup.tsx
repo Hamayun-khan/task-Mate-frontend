@@ -3,7 +3,7 @@ import {
   StyleSheet,
   View,
   Text,
-  TouchableOpacity,
+  Pressable,
   KeyboardAvoidingView,
   Platform,
   ActivityIndicator,
@@ -163,7 +163,7 @@ const Signup = () => {
           )}
         />
 
-        <TouchableOpacity
+        <Pressable
           style={styles.signupButton}
           onPress={handleSubmit(onSubmit)}
           disabled={isLoading}
@@ -173,13 +173,13 @@ const Signup = () => {
           ) : (
             <Text style={styles.signupButtonText}>Sign Up</Text>
           )}
-        </TouchableOpacity>
+        </Pressable>
 
         <View style={styles.loginContainer}>
           <Text style={styles.loginText}>Already have an account? </Text>
-          <TouchableOpacity onPress={() => router.push('/login')}>
+          <Pressable onPress={() => router.push('/login')}>
             <Text style={styles.loginLink}>Login</Text>
-          </TouchableOpacity>
+          </Pressable>
         </View>
       </View>
     </KeyboardAvoidingView>

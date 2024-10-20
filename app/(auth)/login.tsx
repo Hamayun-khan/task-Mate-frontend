@@ -3,7 +3,7 @@ import {
   StyleSheet,
   View,
   Text,
-  TouchableOpacity,
+  Pressable, // Updated import
   KeyboardAvoidingView,
   Platform,
   ActivityIndicator,
@@ -191,14 +191,14 @@ const Login = () => {
           )}
         />
 
-        <TouchableOpacity
+        <Pressable
           style={styles.forgotPassword}
           onPress={() => router.push('/forgotPassword')}
         >
           <Text style={styles.forgotPasswordText}>Forgot Password?</Text>
-        </TouchableOpacity>
+        </Pressable>
 
-        <TouchableOpacity
+        <Pressable
           style={styles.loginButton}
           onPress={handleSubmit(onSubmit)}
           disabled={isLoading}
@@ -208,21 +208,21 @@ const Login = () => {
           ) : (
             <Text style={styles.loginButtonText}>Login</Text>
           )}
-        </TouchableOpacity>
+        </Pressable>
 
-        <TouchableOpacity onPress={onPressGoogleSignIn}>
+        <Pressable onPress={onPressGoogleSignIn}>
           <Text>Sign in with Google</Text>
-        </TouchableOpacity>
+        </Pressable>
 
-        <TouchableOpacity onPress={onPressFacebookSignIn}>
+        <Pressable onPress={onPressFacebookSignIn}>
           <Text>Sign in with Facebook</Text>
-        </TouchableOpacity>
+        </Pressable>
 
         <View style={styles.signupContainer}>
           <Text style={styles.signupText}>Don't have an account? </Text>
-          <TouchableOpacity onPress={() => router.push('/signup')}>
+          <Pressable onPress={() => router.push('/signup')}>
             <Text style={styles.signupLink}>Sign Up</Text>
-          </TouchableOpacity>
+          </Pressable>
         </View>
       </View>
     </KeyboardAvoidingView>
