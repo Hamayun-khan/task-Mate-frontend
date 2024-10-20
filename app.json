@@ -28,17 +28,7 @@
     "extra": {
       "eas": {
         "projectId": "66aa9d4c-4984-45dc-9561-05d765a5e3c2"
-      },
-
-      "linking": {
-        "prefixes": ["taskmate://"],
-        "config": {
-          "screens": {
-            "ResetPassword": "reset-password/:token"
-          }
-        }
       }
-    },
-    "plugins": ["expo-facebook"]
+    }
   }
 }
