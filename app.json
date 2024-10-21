@@ -20,7 +20,27 @@
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#ffffff"
       },
-      "package": "com.hamayunkhan.testingpurpose"
+      "package": "com.hamayunkhan.testingpurpose",
+      "intentFilters": [
+        {
+          "action": "VIEW",
+          "data": {
+            "scheme": "taskmate",
+            "host": "reset-password",
+            "pathPrefix": "/"
+          },
+          "category": ["BROWSABLE", "DEFAULT"]
+        },
+        {
+          "action": "VIEW",
+          "data": {
+            "scheme": "https",
+            "host": "commonly-beloved-calf.ngrok-free.app",
+            "pathPrefix": "/reset-password/"
+          },
+          "category": ["BROWSABLE", "DEFAULT"]
+        }
+      ]
     },
     "web": {
       "favicon": "./assets/favicon.png"

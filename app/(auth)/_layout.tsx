@@ -62,7 +62,7 @@ const RootLayout = () => {
       const { path, queryParams } = Linking.parse(url);
       console.log('Parsed URL:', { path, queryParams });
 
-      if (path === 'reset-password') {
+      if (path && path.startsWith('reset-password')) {
         const resetToken = queryParams?.token;
         if (resetToken) {
           console.log(
